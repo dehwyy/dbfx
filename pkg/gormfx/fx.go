@@ -20,9 +20,9 @@ type Opts struct {
 	// Database kind
 	Database database
 	// Database connection string
-	connectionStringsFromSecretsKey string
+	ConnectionStringsFromSecretsKey string
 	// Would be sprintf'd for conn string
-	connOptsFormat []any
+	ConnOptsFormat []any
 }
 
 type FxOpts struct {
@@ -36,7 +36,7 @@ func New(opts Opts) func(FxOpts) (*gorm.DB, error) {
 
 		connectionStrings := fxOpts.SecretsProvider.MustGet(
 			context.Background(),
-			opts.connectionStringsFromSecretsKey,
+			opts.ConnectionStringsFromSecretsKey,
 		)
 		connectionSlice, ok := connectionStrings.([]any)
 		if !ok {
@@ -50,7 +50,7 @@ func New(opts Opts) func(FxOpts) (*gorm.DB, error) {
 		formattedConnectionStrings := lo.Map(
 			connectionSlice,
 			func(connStr any, _ int) string {
-				return fmt.Sprintf(connStr.(string), opts.connOptsFormat...)
+				return fmt.Sprintf(connStr.(string), opts.ConnOptsFormat...)
 			},
 		)
 
