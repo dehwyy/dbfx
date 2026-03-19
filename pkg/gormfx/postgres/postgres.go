@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"errors"
 	"time"
 
 	"gorm.io/driver/postgres"
@@ -9,13 +10,16 @@ import (
 )
 
 type Opts struct {
-	// 1st is rw, others are read
-	ConnectionStrings []string
+	ConnectionStrings     []string
+	ConnectionIdleTime    time.Duration // 10 minutes
+	ConnectionMaxLifetime time.Duration // 30 minutes
+	ConnectionMaxIdle     int           // 10
+	ConnectionMaxOpen     int           // 30
 }
 
 func New(opts Opts) (*gorm.DB, error) {
 	if len(opts.ConnectionStrings) == 0 {
-		return nil, ErrConnectionStringIsEmpty
+		return nil, errors.New("connection strings slice is empty")
 	}
 
 	conn, err := gorm.Open(
@@ -26,8 +30,6 @@ func New(opts Opts) (*gorm.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	// If only 1 connection, no read replicas
 	if len(opts.ConnectionStrings) == 1 {
 		return conn, nil
 	}
@@ -40,17 +42,27 @@ func New(opts Opts) (*gorm.DB, error) {
 		replicas = append(replicas, postgres.Open(dsn))
 	}
 
-	if err := conn.Use(
-		dbresolver.
-			Register(dbresolver.Config{
-				Replicas: replicas,
-				Policy:   dbresolver.RandomPolicy{},
-			}).
-			SetConnMaxIdleTime(10 * time.Minute).
-			SetConnMaxLifetime(30 * time.Minute).
-			SetMaxIdleConns(10).
-			SetMaxOpenConns(30),
-	); err != nil {
+	resolver := dbresolver.Register(
+		dbresolver.Config{
+			Replicas: replicas,
+			Policy:   dbresolver.RandomPolicy{},
+		},
+	)
+
+	if opts.ConnectionIdleTime > 0 {
+		resolver.SetConnMaxIdleTime(opts.ConnectionIdleTime)
+	}
+	if opts.ConnectionMaxLifetime > 0 {
+		resolver.SetConnMaxLifetime(opts.ConnectionMaxLifetime)
+	}
+	if opts.ConnectionMaxIdle > 0 {
+		resolver.SetMaxIdleConns(opts.ConnectionMaxIdle)
+	}
+	if opts.ConnectionMaxOpen > 0 {
+		resolver.SetMaxOpenConns(opts.ConnectionMaxOpen)
+	}
+
+	if err := conn.Use(resolver); err != nil {
 		return nil, err
 	}
 
