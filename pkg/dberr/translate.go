@@ -35,16 +35,28 @@ func Translate(err error) error {
 
 func target(err error) error {
 	switch {
-	case errors.Is(err, gorm.ErrRecordNotFound):
+	case errors.Is(
+		err,
+		gorm.ErrRecordNotFound,
+	):
 		return ErrNotFound
-	case errors.Is(err, gorm.ErrDuplicatedKey):
+	case errors.Is(
+		err,
+		gorm.ErrDuplicatedKey,
+	):
 		return ErrConflict
-	case errors.Is(err, gorm.ErrForeignKeyViolated):
+	case errors.Is(
+		err,
+		gorm.ErrForeignKeyViolated,
+	):
 		return ErrReference
 	}
 
 	var pgErr *pgconn.PgError
-	if !errors.As(err, &pgErr) {
+	if !errors.As(
+		err,
+		&pgErr,
+	) {
 		return nil
 	}
 

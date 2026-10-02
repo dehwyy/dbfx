@@ -9,11 +9,19 @@ func planAdopt(
 ) ([]int64, error) {
 	for _, step := range steps {
 		if _, ok := known[step.Version]; !ok {
-			return nil, fmt.Errorf("%w: %d", ErrUnknownBaseline, step.Version)
+			return nil, fmt.Errorf(
+				"%w: %d",
+				ErrUnknownBaseline,
+				step.Version,
+			)
 		}
 	}
 
-	versions := make([]int64, 0, len(steps))
+	versions := make(
+		[]int64,
+		0,
+		len(steps),
+	)
 	for _, step := range steps {
 		if step.Table != "" {
 			ok, err := present(step)
@@ -24,7 +32,10 @@ func planAdopt(
 				break
 			}
 		}
-		versions = append(versions, step.Version)
+		versions = append(
+			versions,
+			step.Version,
+		)
 	}
 
 	return versions, nil

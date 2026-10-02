@@ -12,11 +12,17 @@ func Ping(db *sql.DB, timeout time.Duration) error {
 		timeout = DefaultPingTimeout
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		timeout,
+	)
 	defer cancel()
 
 	if err := db.PingContext(ctx); err != nil {
-		return fmt.Errorf("ping database: %w", err)
+		return fmt.Errorf(
+			"ping database: %w",
+			err,
+		)
 	}
 
 	return nil

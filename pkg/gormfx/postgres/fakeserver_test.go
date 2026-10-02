@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"fmt"
+	"log/slog"
 	"net"
 	"testing"
 	"time"
@@ -13,9 +14,20 @@ import (
 func startFakePG(t *testing.T) string {
 	t.Helper()
 
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	t.Cleanup(func() { require.NoError(t, listener.Close()) })
+	listener, err := net.Listen(
+		"tcp",
+		"127.0.0.1:0",
+	)
+	require.NoError(
+		t,
+		err,
+	)
+	t.Cleanup(func() {
+		require.NoError(
+			t,
+			listener.Close(),
+		)
+	})
 
 	go func() {
 		for {
@@ -29,20 +41,36 @@ func startFakePG(t *testing.T) string {
 
 	addr := listener.Addr().(*net.TCPAddr)
 
-	return fmt.Sprintf("host=127.0.0.1 port=%d user=u password=p dbname=d sslmode=disable", addr.Port)
+	return fmt.Sprintf(
+		"host=127.0.0.1 port=%d user=u password=p dbname=d sslmode=disable",
+		addr.Port,
+	)
 }
 
 func serveFakePG(conn net.Conn) {
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			slog.Debug(
+				"fake pg close",
+				"err",
+				err,
+			)
+		}
+	}()
 
-	backend := pgproto3.NewBackend(conn, conn)
+	backend := pgproto3.NewBackend(
+		conn,
+		conn,
+	)
 
 	if _, err := backend.ReceiveStartupMessage(); err != nil {
 		return
 	}
 
 	backend.Send(&pgproto3.AuthenticationOk{})
-	backend.Send(&pgproto3.ReadyForQuery{TxStatus: 'I'})
+	backend.Send(&pgproto3.ReadyForQuery{
+		TxStatus: 'I',
+	})
 	if err := backend.Flush(); err != nil {
 		return
 	}
@@ -56,7 +84,9 @@ func serveFakePG(conn net.Conn) {
 		switch msg.(type) {
 		case *pgproto3.Query:
 			backend.Send(&pgproto3.EmptyQueryResponse{})
-			backend.Send(&pgproto3.ReadyForQuery{TxStatus: 'I'})
+			backend.Send(&pgproto3.ReadyForQuery{
+				TxStatus: 'I',
+			})
 			if err := backend.Flush(); err != nil {
 				return
 			}
@@ -75,11 +105,26 @@ func TestNewAppliesPoolLimitsWithSingleDSN(t *testing.T) {
 		ConnectionMaxIdle: 2,
 		PingTimeout:       5 * time.Second,
 	})
-	require.NoError(t, err)
+	require.NoError(
+		t,
+		err,
+	)
 
 	sqlDB, err := conn.DB()
-	require.NoError(t, err)
-	t.Cleanup(func() { require.NoError(t, sqlDB.Close()) })
+	require.NoError(
+		t,
+		err,
+	)
+	t.Cleanup(func() {
+		require.NoError(
+			t,
+			sqlDB.Close(),
+		)
+	})
 
-	require.Equal(t, 5, sqlDB.Stats().MaxOpenConnections)
+	require.Equal(
+		t,
+		5,
+		sqlDB.Stats().MaxOpenConnections,
+	)
 }

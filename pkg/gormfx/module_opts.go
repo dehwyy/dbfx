@@ -8,7 +8,10 @@ import (
 func ModuleOpts(opts Opts) fx.Option {
 	return fx.Provide(
 		func(lc fx.Lifecycle) (*gorm.DB, error) {
-			return provide(lc, New(opts))
+			return provide(
+				lc,
+				New(opts),
+			)
 		},
 	)
 }

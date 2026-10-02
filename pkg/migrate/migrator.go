@@ -31,9 +31,16 @@ func New(db *sql.DB, cfg Config) (*Migrator, error) {
 
 	fsys := cfg.FS
 	if cfg.Dir != "" {
-		fsys, err = fs.Sub(cfg.FS, cfg.Dir)
+		fsys, err = fs.Sub(
+			cfg.FS,
+			cfg.Dir,
+		)
 		if err != nil {
-			return nil, fmt.Errorf("sub fs %q: %w", cfg.Dir, err)
+			return nil, fmt.Errorf(
+				"sub fs %q: %w",
+				cfg.Dir,
+				err,
+			)
 		}
 	}
 
@@ -44,7 +51,10 @@ func New(db *sql.DB, cfg Config) (*Migrator, error) {
 
 	locker, err := lock.NewPostgresSessionLocker(lock.WithLockID(lockID))
 	if err != nil {
-		return nil, fmt.Errorf("create session locker: %w", err)
+		return nil, fmt.Errorf(
+			"create session locker: %w",
+			err,
+		)
 	}
 
 	options := []goose.ProviderOption{
@@ -52,15 +62,29 @@ func New(db *sql.DB, cfg Config) (*Migrator, error) {
 		goose.WithSessionLocker(locker),
 	}
 	if len(cfg.GoMigrations) > 0 {
-		options = append(options, goose.WithGoMigrations(cfg.GoMigrations...))
+		options = append(
+			options,
+			goose.WithGoMigrations(cfg.GoMigrations...),
+		)
 	}
 	if cfg.Logger != nil {
-		options = append(options, goose.WithSlog(cfg.Logger))
+		options = append(
+			options,
+			goose.WithSlog(cfg.Logger),
+		)
 	}
 
-	provider, err := goose.NewProvider(goose.DialectPostgres, db, fsys, options...)
+	provider, err := goose.NewProvider(
+		goose.DialectPostgres,
+		db,
+		fsys,
+		options...,
+	)
 	if err != nil {
-		return nil, fmt.Errorf("create goose provider: %w", err)
+		return nil, fmt.Errorf(
+			"create goose provider: %w",
+			err,
+		)
 	}
 
 	return &Migrator{

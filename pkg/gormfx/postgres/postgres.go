@@ -46,22 +46,37 @@ func New(opts Opts) (*gorm.DB, error) {
 		return nil, err
 	}
 
-	applyPool(sqlDB, opts)
+	applyPool(
+		sqlDB,
+		opts,
+	)
 
-	if err := Ping(sqlDB, opts.PingTimeout); err != nil {
-		return nil, errors.Join(err, sqlDB.Close())
+	if err := Ping(
+		sqlDB,
+		opts.PingTimeout,
+	); err != nil {
+		return nil, errors.Join(
+			err,
+			sqlDB.Close(),
+		)
 	}
 
 	if len(opts.ConnectionStrings) == 1 {
 		return conn, nil
 	}
 
-	replicas := make([]gorm.Dialector, 0)
+	replicas := make(
+		[]gorm.Dialector,
+		0,
+	)
 	for _, dsn := range opts.ConnectionStrings[1:] {
 		if dsn == "" {
 			continue
 		}
-		replicas = append(replicas, postgres.Open(dsn))
+		replicas = append(
+			replicas,
+			postgres.Open(dsn),
+		)
 	}
 
 	resolver := dbresolver.Register(
@@ -85,7 +100,13 @@ func New(opts Opts) (*gorm.DB, error) {
 	}
 
 	if err := conn.Use(resolver); err != nil {
-		return nil, errors.Join(fmt.Errorf("register dbresolver: %w", err), sqlDB.Close())
+		return nil, errors.Join(
+			fmt.Errorf(
+				"register dbresolver: %w",
+				err,
+			),
+			sqlDB.Close(),
+		)
 	}
 
 	return conn, nil

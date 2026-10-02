@@ -15,38 +15,72 @@ func (m *Migrator) Adopt(ctx context.Context) ([]int64, error) {
 	}
 
 	if _, err := m.provider.GetDBVersion(ctx); err != nil {
-		return nil, fmt.Errorf("ensure version table: %w", err)
+		return nil, fmt.Errorf(
+			"ensure version table: %w",
+			err,
+		)
 	}
 
 	locker, err := lock.NewPostgresSessionLocker(lock.WithLockID(m.lockID))
 	if err != nil {
-		return nil, fmt.Errorf("create session locker: %w", err)
+		return nil, fmt.Errorf(
+			"create session locker: %w",
+			err,
+		)
 	}
 
 	conn, err := m.db.Conn(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("acquire connection: %w", err)
+		return nil, fmt.Errorf(
+			"acquire connection: %w",
+			err,
+		)
 	}
 
-	if err := locker.SessionLock(ctx, conn); err != nil {
-		return nil, errors.Join(fmt.Errorf("lock: %w", err), conn.Close())
+	if err := locker.SessionLock(
+		ctx,
+		conn,
+	); err != nil {
+		return nil, errors.Join(
+			fmt.Errorf(
+				"lock: %w",
+				err,
+			),
+			conn.Close(),
+		)
 	}
 
-	adopted, adoptErr := m.adoptLocked(ctx, conn)
+	adopted, adoptErr := m.adoptLocked(
+		ctx,
+		conn,
+	)
 
-	unlockErr := locker.SessionUnlock(context.WithoutCancel(ctx), conn)
+	unlockErr := locker.SessionUnlock(
+		context.WithoutCancel(ctx),
+		conn,
+	)
 
-	return adopted, errors.Join(adoptErr, unlockErr, conn.Close())
+	return adopted, errors.Join(
+		adoptErr,
+		unlockErr,
+		conn.Close(),
+	)
 }
 
 func (m *Migrator) adoptLocked(ctx context.Context, conn *sql.Conn) ([]int64, error) {
 	var managed int
 	err := conn.QueryRowContext(
 		ctx,
-		fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE version_id > 0 AND is_applied", m.cfg.Table),
+		fmt.Sprintf(
+			"SELECT COUNT(*) FROM %s WHERE version_id > 0 AND is_applied",
+			m.cfg.Table,
+		),
 	).Scan(&managed)
 	if err != nil {
-		return nil, fmt.Errorf("count applied: %w", err)
+		return nil, fmt.Errorf(
+			"count applied: %w",
+			err,
+		)
 	}
 	if managed > 0 {
 		return nil, nil
@@ -61,7 +95,11 @@ func (m *Migrator) adoptLocked(ctx context.Context, conn *sql.Conn) ([]int64, er
 		m.cfg.Baseline,
 		known,
 		func(step BaselineStep) (bool, error) {
-			return probe(ctx, conn, step)
+			return probe(
+				ctx,
+				conn,
+				step,
+			)
 		},
 	)
 	if err != nil {
@@ -71,24 +109,43 @@ func (m *Migrator) adoptLocked(ctx context.Context, conn *sql.Conn) ([]int64, er
 		return nil, nil
 	}
 
-	tx, err := conn.BeginTx(ctx, nil)
+	tx, err := conn.BeginTx(
+		ctx,
+		nil,
+	)
 	if err != nil {
-		return nil, fmt.Errorf("begin: %w", err)
+		return nil, fmt.Errorf(
+			"begin: %w",
+			err,
+		)
 	}
 
 	for _, version := range versions {
 		_, err := tx.ExecContext(
 			ctx,
-			fmt.Sprintf("INSERT INTO %s (version_id, is_applied) VALUES ($1, TRUE)", m.cfg.Table),
+			fmt.Sprintf(
+				"INSERT INTO %s (version_id, is_applied) VALUES ($1, TRUE)",
+				m.cfg.Table,
+			),
 			version,
 		)
 		if err != nil {
-			return nil, errors.Join(fmt.Errorf("mark version %d: %w", version, err), tx.Rollback())
+			return nil, errors.Join(
+				fmt.Errorf(
+					"mark version %d: %w",
+					version,
+					err,
+				),
+				tx.Rollback(),
+			)
 		}
 	}
 
 	if err := tx.Commit(); err != nil {
-		return nil, fmt.Errorf("commit: %w", err)
+		return nil, fmt.Errorf(
+			"commit: %w",
+			err,
+		)
 	}
 
 	return versions, nil

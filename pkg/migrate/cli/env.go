@@ -43,14 +43,26 @@ func loadEnv(get func(string) string) (*Env, error) {
 
 	for name, value := range map[string]string{EnvDSN: env.DSN, EnvDir: env.Dir} {
 		if value == "" {
-			return nil, fmt.Errorf("%w: %s", ErrMissingEnv, name)
+			return nil, fmt.Errorf(
+				"%w: %s",
+				ErrMissingEnv,
+				name,
+			)
 		}
 	}
 
 	if raw := get(EnvLockID); raw != "" {
-		lockID, err := strconv.ParseInt(raw, 10, 64)
+		lockID, err := strconv.ParseInt(
+			raw,
+			10,
+			64,
+		)
 		if err != nil {
-			return nil, fmt.Errorf("parse %s: %w", EnvLockID, err)
+			return nil, fmt.Errorf(
+				"parse %s: %w",
+				EnvLockID,
+				err,
+			)
 		}
 		env.LockID = lockID
 	}
@@ -58,14 +70,22 @@ func loadEnv(get func(string) string) (*Env, error) {
 	if raw := get(EnvPingTimeout); raw != "" {
 		timeout, err := time.ParseDuration(raw)
 		if err != nil {
-			return nil, fmt.Errorf("parse %s: %w", EnvPingTimeout, err)
+			return nil, fmt.Errorf(
+				"parse %s: %w",
+				EnvPingTimeout,
+				err,
+			)
 		}
 		env.PingTimeout = timeout
 	}
 
 	baseline, err := ParseBaseline(get(EnvBaseline))
 	if err != nil {
-		return nil, fmt.Errorf("parse %s: %w", EnvBaseline, err)
+		return nil, fmt.Errorf(
+			"parse %s: %w",
+			EnvBaseline,
+			err,
+		)
 	}
 	env.Baseline = baseline
 

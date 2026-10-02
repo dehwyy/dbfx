@@ -16,12 +16,25 @@ func probe(ctx context.Context, conn *sql.Conn, step BaselineStep) (bool, error)
 
 	var err error
 	if step.Column == "" {
-		err = conn.QueryRowContext(ctx, tableExistsQuery, step.Table).Scan(&exists)
+		err = conn.QueryRowContext(
+			ctx,
+			tableExistsQuery,
+			step.Table,
+		).Scan(&exists)
 	} else {
-		err = conn.QueryRowContext(ctx, columnExistsQuery, step.Table, step.Column).Scan(&exists)
+		err = conn.QueryRowContext(
+			ctx,
+			columnExistsQuery,
+			step.Table,
+			step.Column,
+		).Scan(&exists)
 	}
 	if err != nil {
-		return false, fmt.Errorf("probe version %d: %w", step.Version, err)
+		return false, fmt.Errorf(
+			"probe version %d: %w",
+			step.Version,
+			err,
+		)
 	}
 
 	return exists, nil
