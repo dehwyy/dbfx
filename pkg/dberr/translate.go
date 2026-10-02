@@ -23,7 +23,11 @@ func Translate(err error) error {
 	}
 
 	if target := target(err); target != nil {
-		return fmt.Errorf("%w: %w", target, err)
+		return fmt.Errorf(
+			"%w: %w",
+			target,
+			err,
+		)
 	}
 
 	return err
