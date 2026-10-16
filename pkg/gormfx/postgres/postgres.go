@@ -17,16 +17,17 @@ import (
 const DefaultPingTimeout = 10 * time.Second
 
 type Opts struct {
-	ConnectionStrings     []string
-	ConnectionIdleTime    time.Duration
-	ConnectionMaxLifetime time.Duration
-	ConnectionMaxIdle     int
-	ConnectionMaxOpen     int
-	PingTimeout           time.Duration
-	TranslateError        bool
-	LogLevel              gormlogger.LogLevel
-	LogSlowThreshold      time.Duration
-	LogOutput             io.Writer
+	ConnectionStrings      []string
+	ConnectionIdleTime     time.Duration
+	ConnectionMaxLifetime  time.Duration
+	ConnectionMaxIdle      int
+	ConnectionMaxOpen      int
+	PingTimeout            time.Duration
+	TranslateError         bool
+	LogLevel               gormlogger.LogLevel
+	LogSlowThreshold       time.Duration
+	LogOutput              io.Writer
+	SkipDefaultTransaction bool
 }
 
 func New(opts Opts) (*gorm.DB, error) {
@@ -42,14 +43,23 @@ func New(opts Opts) (*gorm.DB, error) {
 		return nil, err
 	}
 
+	skipDefaultTransaction, err := resolveSkipDefaultTransaction(
+		opts.SkipDefaultTransaction,
+		os.Getenv,
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	conn, err := gorm.Open(
 		postgres.Open(
 			opts.ConnectionStrings[0],
 		),
 		&gorm.Config{
-			TranslateError:       opts.TranslateError,
-			DisableAutomaticPing: true,
-			Logger:               newSQLLogger(settings),
+			TranslateError:         opts.TranslateError,
+			DisableAutomaticPing:   true,
+			Logger:                 newSQLLogger(settings),
+			SkipDefaultTransaction: skipDefaultTransaction,
 		},
 	)
 	if err != nil {
