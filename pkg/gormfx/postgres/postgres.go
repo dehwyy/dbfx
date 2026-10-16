@@ -4,10 +4,13 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"io"
+	"os"
 	"time"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	gormlogger "gorm.io/gorm/logger"
 	"gorm.io/plugin/dbresolver"
 )
 
@@ -21,11 +24,22 @@ type Opts struct {
 	ConnectionMaxOpen     int
 	PingTimeout           time.Duration
 	TranslateError        bool
+	LogLevel              gormlogger.LogLevel
+	LogSlowThreshold      time.Duration
+	LogOutput             io.Writer
 }
 
 func New(opts Opts) (*gorm.DB, error) {
 	if len(opts.ConnectionStrings) == 0 {
 		return nil, errors.New("connection strings slice is empty")
+	}
+
+	settings, err := resolveLogSettings(
+		opts,
+		os.Getenv,
+	)
+	if err != nil {
+		return nil, err
 	}
 
 	conn, err := gorm.Open(
@@ -35,6 +49,7 @@ func New(opts Opts) (*gorm.DB, error) {
 		&gorm.Config{
 			TranslateError:       opts.TranslateError,
 			DisableAutomaticPing: true,
+			Logger:               newSQLLogger(settings),
 		},
 	)
 	if err != nil {

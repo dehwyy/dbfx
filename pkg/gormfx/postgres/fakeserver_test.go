@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"bytes"
 	"fmt"
 	"log/slog"
 	"net"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/stretchr/testify/require"
+	gormlogger "gorm.io/gorm/logger"
 )
 
 func startFakePG(t *testing.T) string {
@@ -127,4 +129,102 @@ func TestNewAppliesPoolLimitsWithSingleDSN(t *testing.T) {
 		5,
 		sqlDB.Stats().MaxOpenConnections,
 	)
+}
+
+func TestNewInstallsSQLLogger(t *testing.T) {
+	dsn := startFakePG(t)
+	out := &bytes.Buffer{}
+
+	t.Setenv(
+		EnvLogLevel,
+		"info",
+	)
+	t.Setenv(
+		EnvLogSlowThreshold,
+		"1s",
+	)
+
+	conn, err := New(Opts{
+		ConnectionStrings: []string{dsn},
+		PingTimeout:       5 * time.Second,
+		LogOutput:         out,
+	})
+	require.NoError(
+		t,
+		err,
+	)
+	sqlDB, err := conn.DB()
+	require.NoError(
+		t,
+		err,
+	)
+	t.Cleanup(func() {
+		require.NoError(
+			t,
+			sqlDB.Close(),
+		)
+	})
+
+	installed, ok := conn.Logger.(*sqlLogger)
+	require.True(
+		t,
+		ok,
+	)
+	require.Equal(
+		t,
+		gormlogger.Info,
+		installed.level,
+	)
+	require.Equal(
+		t,
+		time.Second,
+		installed.slow,
+	)
+}
+
+func TestNewRejectsBrokenLogEnv(t *testing.T) {
+	tests := []struct {
+		name string
+		env  string
+		val  string
+	}{
+		{
+			name: "level",
+			env:  EnvLogLevel,
+			val:  "loud",
+		},
+		{
+			name: "threshold",
+			env:  EnvLogSlowThreshold,
+			val:  "soon",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(
+			tt.name,
+			func(t *testing.T) {
+				dsn := startFakePG(t)
+				t.Setenv(
+					tt.env,
+					tt.val,
+				)
+
+				conn, err := New(Opts{
+					ConnectionStrings: []string{dsn},
+					PingTimeout:       5 * time.Second,
+				})
+
+				require.ErrorIs(
+					t,
+					err,
+					ErrInvalidEnv,
+				)
+				require.Nil(
+					t,
+					conn,
+				)
+			},
+		)
+	}
 }
