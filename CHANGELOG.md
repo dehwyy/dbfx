@@ -1,5 +1,27 @@
 # Changelog
 
+## v0.3.0
+
+### Added
+- `postgres.Opts.LogLevel`, `LogSlowThreshold`, `LogOutput`: control of the SQL logger. Zero values fall back to the environment, then to the defaults. A negative `LogSlowThreshold` disables slow-query lines. `LogOutput` replaces stdout (tests).
+- `DBFX_LOG_LEVEL` (`silent|error|warn|info`, default `warn`) and `DBFX_LOG_SLOW_THRESHOLD` (duration, default `200ms`, `0` disables slow-query lines). A malformed value makes `New` return `postgres.ErrInvalidEnv`.
+- `postgres.Opts.SkipDefaultTransaction` and `gormfx.Opts.SkipDefaultTransaction` (default `false`) feed `gorm.Config.SkipDefaultTransaction`. `DBFX_SKIP_DEFAULT_TRANSACTION` (bool, default `false`) enables it without a code change; the option or the env turns it on. Explicit transactions are not affected. Enable it per service only after checking `Create`/`Save` with associations and hooks.
+- `postgres.ErrInvalidEnv`, `postgres.ErrInvalidOpts`.
+
+### Changed
+- The default GORM logger is replaced by a dbfx logger on every `*gorm.DB` built by `gormfx`/`postgres.New`:
+  - one JSON line per record on stdout (`time`, `level`, `message`, `duration_ms`, `rows`, `caller`, `sql`, `error`), no colors, no second line;
+  - SQL keeps `$N` placeholders, argument values are never written (`ParamsFilter` drops them), so idempotency keys, API key ids, amounts and requisites stay out of the logs;
+  - `gorm.ErrRecordNotFound` is not logged at the default level;
+  - default level is `warn`: slow queries and errors only; a query that is neither is not rendered at all (`fc` is not called);
+  - `sql` is cut at 4096 bytes on a rune boundary, `sql_len` carries the original length when it was cut.
+- Session loggers (`Session(&gorm.Session{Logger: ...})`), `LogMode` and wrappers that forward `ParamsFilter` keep working. A wrapper that embeds `logger.Interface` but does not forward `ParamsFilter` makes gorm pass the values back to the logger; forward it.
+- Log messages are `slow sql`, `sql error` and `sql`; the old `SLOW SQL >= ...` text and the `[rows:N]` suffix are gone.
+
+### Not included
+- Pool defaults (`MaxIdle`), acquire timeout, trace ids in log lines.
+- The go directive and the gorm version are unchanged.
+
 ## v0.2.0
 
 ### Fixed

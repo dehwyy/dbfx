@@ -20,6 +20,8 @@ gormfx.Module(func(cfg *Config) gormfx.Opts {
 
 `ConnectionStrings[0]` is the primary, the rest are read replicas (dbresolver). Pool limits apply to the primary and the replicas. The module closes the pool on `OnStop`. `gormfx.New(opts)()` stays available as before.
 
+The SQL logger and the transaction option are configured through `DBFX_*` variables, see [gormfx environment](#gormfx-environment).
+
 ## dberr
 
 ```go
@@ -76,6 +78,24 @@ If the goose table has no applied versions, `Up` marks the longest prefix of ste
 | `DBFX_LOCK_ID` | advisory lock id, default goose's |
 | `DBFX_BASELINE` | `1:orders,11:orders#balance_phase` |
 | `DBFX_PING_TIMEOUT` | duration, default 10s |
+
+## gormfx environment
+
+`gormfx` installs its own GORM logger: one JSON line per record, `$N` placeholders without argument values, no `record not found`, no colors. The default level `warn` writes slow queries and errors only.
+
+| Variable | Meaning | Opts field |
+|---|---|---|
+| `DBFX_LOG_LEVEL` | `silent`, `error`, `warn` (default), `info`; `info` writes every query, debugging only | `PostgresOpts.LogLevel` (`gorm.io/gorm/logger`) |
+| `DBFX_LOG_SLOW_THRESHOLD` | duration, default `200ms`; `0` disables slow-query lines | `PostgresOpts.LogSlowThreshold` (negative disables) |
+| `DBFX_SKIP_DEFAULT_TRANSACTION` | bool, default `false`; skips the implicit transaction around single writes | `Opts.SkipDefaultTransaction`, `PostgresOpts.SkipDefaultTransaction` |
+
+A non-zero Opts field wins over the variable; a malformed variable makes `New` fail with `postgres.ErrInvalidEnv`. `PostgresOpts.LogOutput` replaces stdout.
+
+```json
+{"time":"2026-10-16T14:00:00Z","level":"warn","message":"slow sql","duration_ms":412.318,"rows":1,"caller":"/src/internal/repo/get.go:42","sql":"SELECT * FROM \"orders\" WHERE key = $1"}
+```
+
+`sql` is cut at 4096 bytes and `sql_len` then holds the original length. A logger that wraps this one must forward `ParamsFilter`, otherwise gorm hands the values back.
 
 ## Tests
 
