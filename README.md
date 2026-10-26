@@ -97,6 +97,38 @@ A non-zero Opts field wins over the variable; a malformed variable makes `New` f
 
 `sql` is cut at 4096 bytes and `sql_len` then holds the original length. A logger that wraps this one must forward `ParamsFilter`, otherwise gorm hands the values back.
 
+## Connection string from environment
+
+```go
+dsn, ok, err := postgres.ConnectionStringFromEnv("orders")
+if err != nil {
+	return err
+}
+if !ok {
+	dsn = cfg.VaultDSN
+}
+
+gormfx.Opts{
+	Postgres: &gormfx.PostgresOpts{
+		ConnectionStrings: []string{dsn},
+	},
+}
+```
+
+`DB_PGSQL_HOST` switches the mode on; without it `ok` is `false` and the service keeps its old DSN (Vault). When it is set, the environment wins over `ConnectionStrings` that the service would otherwise take from Vault, so the service passes the returned DSN as `ConnectionStrings[0]`.
+
+| Variable | Meaning |
+|---|---|
+| `DB_PGSQL_HOST` | host or IP; empty disables the mode |
+| `DB_PGSQL_PORT` | default `5432` |
+| `DB_PGSQL_DBNAME` | overrides the `dbName` argument |
+| `DB_PGSQL_USER`, `DB_PGSQL_USERNAME` | either one; both set must be equal |
+| `DB_PGSQL_PASSWORD` | required, taken as is |
+| `DB_PGSQL_SSLMODE` | `disable`, `allow`, `prefer`, `require`, `verify-ca`, `verify-full` |
+| `DB_PGSQL_SSLROOTCERT` | path to the CA bundle, passed as is |
+
+Errors wrap `postgres.ErrInvalidEnv`, name the variable and never include its value.
+
 ## Tests
 
 `go test ./...` needs no database. `go test -tags=integration ./...` with `DBFX_TEST_DSN` pointing to an empty throwaway PostgreSQL database also runs the migration and translation tests against it.

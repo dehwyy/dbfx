@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.4.0
+
+### Added
+- `postgres.ConnectionStringFromEnv(dbName)` returns `(dsn, ok, err)`: a `postgres://` URL built from the `DB_PGSQL_*` variables (`HOST`, `PORT`, `DBNAME`, `USER`/`USERNAME`, `PASSWORD`, `SSLMODE`, `SSLROOTCERT`). An empty `DB_PGSQL_HOST` returns `ok=false` and nothing else is read. The user, password and database name are escaped by `net/url`, so any password character is safe.
+- Defaults and rules: port `5432` (`1..65535`), database from `DB_PGSQL_DBNAME` or the `dbName` argument, user from `DB_PGSQL_USER` or `DB_PGSQL_USERNAME` (both set and different is an error), the password is required and never trimmed, `DB_PGSQL_SSLMODE` is one of `disable|allow|prefer|require|verify-ca|verify-full`.
+- A malformed variable returns an error wrapping `postgres.ErrInvalidEnv`. The message names the variable and never contains a value.
+- Constants `postgres.EnvPgsql*` and `postgres.DefaultPgsqlPort`.
+
 ## v0.3.0
 
 ### Added
